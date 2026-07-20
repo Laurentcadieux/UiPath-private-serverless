@@ -20,6 +20,8 @@ REQUIRED_PACKAGES = [
     "python3-venv",
 ]
 DOCKER_COMPOSE_PACKAGES = ("docker-compose-plugin", "docker-compose-v2")
+CONTAINER_UID = 1000
+CONTAINER_GID = 1000
 
 
 class HostManager:
@@ -51,6 +53,7 @@ class HostManager:
             directory.mkdir(parents=True, exist_ok=True)
         _chmod(config.packages.cache_path, 0o750)
         _chmod(config.logs.host_path, 0o755)
+        _chown(config.packages.cache_path, CONTAINER_UID, CONTAINER_GID)
 
     def ensure_dependencies(self, *, auto_install: bool = False) -> None:
         missing = [pkg for pkg in REQUIRED_PACKAGES if shutil.which(pkg) is None and pkg != "docker.io"]
@@ -102,6 +105,13 @@ def _read_os_release() -> dict[str, str]:
 def _chmod(path: Path, mode: int) -> None:
     try:
         path.chmod(mode)
+    except PermissionError:
+        pass
+
+
+def _chown(path: Path, uid: int, gid: int) -> None:
+    try:
+        os.chown(path, uid, gid)
     except PermissionError:
         pass
 

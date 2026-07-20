@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .host import CONTAINER_GID, CONTAINER_UID, _chown
 from .models import AppConfig, ContainerSpec, ContainerStatus, SecretBundle
 from .naming import container_name, instance_id
 
@@ -65,6 +66,7 @@ class Reconciler:
         report = ReconcileReport(requested=len(specs), existing=len(docker_manager.list_managed_containers()))
         for spec in specs:
             spec.log_path.mkdir(parents=True, exist_ok=True)
+            _chown(spec.log_path, CONTAINER_UID, CONTAINER_GID)
             try:
                 action, status = docker_manager.ensure_container(spec, recreate=recreate)
                 report.statuses.append(status)
