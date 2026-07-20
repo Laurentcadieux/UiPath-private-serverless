@@ -16,10 +16,10 @@ REQUIRED_PACKAGES = [
     "gnupg",
     "openssl",
     "docker.io",
-    "docker-compose-plugin",
     "python3",
     "python3-venv",
 ]
+DOCKER_COMPOSE_PACKAGES = ("docker-compose-plugin", "docker-compose-v2")
 
 
 class HostManager:
@@ -53,12 +53,13 @@ class HostManager:
         _chmod(config.logs.host_path, 0o755)
 
     def ensure_dependencies(self, *, auto_install: bool = False) -> None:
-        missing = [pkg for pkg in REQUIRED_PACKAGES if shutil.which(pkg) is None and pkg not in {"docker.io", "docker-compose-plugin"}]
+        missing = [pkg for pkg in REQUIRED_PACKAGES if shutil.which(pkg) is None and pkg != "docker.io"]
         if missing and not auto_install:
             return
         if auto_install:
             subprocess.run(["apt-get", "update"], check=True)
             subprocess.run(["apt-get", "install", "-y", *REQUIRED_PACKAGES], check=True)
+            _install_first_available(DOCKER_COMPOSE_PACKAGES)
 
     def ensure_docker_service(self) -> None:
         docker_bin = shutil.which("docker")
@@ -103,3 +104,13 @@ def _chmod(path: Path, mode: int) -> None:
         path.chmod(mode)
     except PermissionError:
         pass
+
+
+def _install_first_available(packages: tuple[str, ...]) -> None:
+    for package in packages:
+        result = subprocess.run(["apt-get", "install", "-y", package], text=True, capture_output=True)
+        if result.returncode == 0:
+            return
+    raise DockerUnavailableError(
+        "Docker Compose plugin package is unavailable. Tried: " + ", ".join(packages)
+    )
