@@ -116,6 +116,15 @@ def _chown(path: Path, uid: int, gid: int) -> None:
         pass
 
 
+def _chown_tree(path: Path, uid: int, gid: int) -> None:
+    _chown(path, uid, gid)
+    if not path.is_dir():
+        return
+    for root, dirs, files in os.walk(path):
+        for name in [*dirs, *files]:
+            _chown(Path(root) / name, uid, gid)
+
+
 def _install_first_available(packages: tuple[str, ...]) -> None:
     for package in packages:
         result = subprocess.run(["apt-get", "install", "-y", package], text=True, capture_output=True)
