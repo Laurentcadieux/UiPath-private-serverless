@@ -3,11 +3,11 @@
 Target host tested on 2026-07-20:
 
 - Ubuntu 24.04 amd64
-- 1 CPU
-- 458 MiB RAM
+- 2 CPU
+- 1.9 GiB RAM
 - Docker not installed initially
 
-The host is supported by OS and architecture, but memory is very small for UiPath Robot containers.
+This host successfully ran five connected Robot containers during MVP testing, then was reduced back to one.
 
 ## One-Time Bootstrap From Repo
 
@@ -20,12 +20,19 @@ export UIPATH_MACHINE_KEY="machine-template-key"
 curl -fsSL "$REPO_URL/raw/$BRANCH/scripts/bootstrap-live-host.sh" | bash
 ```
 
+If using the AI builder repository before the product has been copied to a standalone public repository:
+
+```bash
+export PRODUCT_SUBDIR="OUTPUT_Product"
+curl -fsSL "$REPO_URL/raw/$BRANCH/OUTPUT_Product/scripts/bootstrap-live-host.sh" | bash
+```
+
 If the repository is private, clone with a deploy key or run the script from an authenticated checkout instead:
 
 ```bash
 git clone git@github.com:Laurentcadieux/UiPath-private-serverless.git /opt/UiPath-private-serverless
 cd /opt/UiPath-private-serverless
-UIPATH_MACHINE_KEY="machine-template-key" bash scripts/bootstrap-live-host.sh
+PRODUCT_SUBDIR="OUTPUT_Product" UIPATH_MACHINE_KEY="machine-template-key" bash OUTPUT_Product/scripts/bootstrap-live-host.sh
 ```
 
 ## Configure

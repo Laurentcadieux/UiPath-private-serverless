@@ -17,7 +17,7 @@ Clone the repository:
 ```bash
 rm -rf /opt/uipath-private-serverless-repo
 git clone --depth 1 https://github.com/Laurentcadieux/UiPath-private-serverless.git /opt/uipath-private-serverless-repo
-cd /opt/uipath-private-serverless-repo/UiPath-private-serverless
+cd /opt/uipath-private-serverless-repo/OUTPUT_Product
 ```
 
 Install the CLI:

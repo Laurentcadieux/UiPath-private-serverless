@@ -12,16 +12,15 @@ This AGENTS.md scopes guidance to `UiPath-private-serverless`. Parent AGENTS gui
 ## Current Layout
 
 ### Files
-- None
+- `README.md` - builder workspace overview and product publishing notes
 
 ### Subdirectories
-- `deploy/`
-- `docs/`
-- `src/`
-- `tests/`
+- `AI_Project/` - local AI/test support files not copied to the public product repo
+- `OUTPUT_Product/` - deployable/public product source of truth
 
 <!-- OMX:AGENTS-INIT:MANUAL:START -->
 ## Local Notes
-- Add subtree-specific constraints, ownership notes, and test commands here.
-- Keep notes scoped to this directory and its children.
+- Keep deployable product code under `OUTPUT_Product/`.
+- Keep local-only AI/project context outside `OUTPUT_Product/`.
+- Product tests should be run from `OUTPUT_Product/`.
 <!-- OMX:AGENTS-INIT:MANUAL:END -->

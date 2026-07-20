@@ -4,6 +4,7 @@ set -euo pipefail
 REPO_URL="${REPO_URL:-https://github.com/Laurentcadieux/UiPath-private-serverless.git}"
 BRANCH="${BRANCH:-main}"
 INSTALL_DIR="${INSTALL_DIR:-/opt/UiPath-private-serverless}"
+PRODUCT_SUBDIR="${PRODUCT_SUBDIR:-}"
 CONFIG_PATH="${CONFIG_PATH:-/etc/uipath-runtime/config.yaml}"
 SECRETS_PATH="${SECRETS_PATH:-/etc/uipath-runtime/secrets.env}"
 COUNT="${COUNT:-1}"
@@ -41,11 +42,24 @@ else
   git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
 fi
 
-"$INSTALL_DIR/scripts/install.sh"
+PRODUCT_DIR="$INSTALL_DIR"
+if [ -n "$PRODUCT_SUBDIR" ]; then
+  PRODUCT_DIR="$INSTALL_DIR/$PRODUCT_SUBDIR"
+elif [ -f "$INSTALL_DIR/OUTPUT_Product/pyproject.toml" ]; then
+  PRODUCT_DIR="$INSTALL_DIR/OUTPUT_Product"
+fi
+
+if [ ! -f "$PRODUCT_DIR/pyproject.toml" ]; then
+  echo "ERROR: product folder not found at $PRODUCT_DIR" >&2
+  echo "Set PRODUCT_SUBDIR if the repository stores the product in a subfolder." >&2
+  exit 2
+fi
+
+"$PRODUCT_DIR/scripts/install.sh"
 
 mkdir -p /etc/uipath-runtime
 if [ ! -f "$CONFIG_PATH" ]; then
-  cp "$INSTALL_DIR/config/config.example.yaml" "$CONFIG_PATH"
+  cp "$PRODUCT_DIR/config/config.example.yaml" "$CONFIG_PATH"
   chmod 644 "$CONFIG_PATH"
   echo "Created default config at $CONFIG_PATH. Edit orchestrator.url and runtime.image before init."
 fi
@@ -58,6 +72,7 @@ if [ -n "${UIPATH_MACHINE_KEY:-}" ]; then
 fi
 
 echo "Installed uipath-runtime from $REPO_URL ($BRANCH)"
+echo "Product folder: $PRODUCT_DIR"
 echo "Config: $CONFIG_PATH"
 echo "Secrets: $SECRETS_PATH"
 echo "Docker: $(docker --version)"
