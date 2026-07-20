@@ -1,0 +1,12 @@
+[Unit]
+Description=UiPath Runtime Provisioner status check
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/uipath-runtime/secrets.env
+ExecStart=/usr/local/bin/uipath-runtime status --config /etc/uipath-runtime/config.yaml
+
+[Install]
+WantedBy=multi-user.target

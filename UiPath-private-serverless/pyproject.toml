@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uipath-runtime-provisioner"
+version = "0.1.0"
+description = "Provision local UiPath Linux Robot containers on Ubuntu hosts"
+requires-python = ">=3.10"
+dependencies = [
+  "docker>=7",
+  "PyYAML>=6",
+  "pydantic>=2",
+  "typer>=0.12",
+  "rich>=13",
+  "cryptography>=42",
+]
+
+[project.scripts]
+uipath-runtime = "uipath_runtime.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

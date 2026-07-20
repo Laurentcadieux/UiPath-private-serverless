@@ -1,0 +1,44 @@
+version: 1
+orchestrator:
+  url: "https://orchestrator.example.com"
+  organization: "ExampleOrganization"
+  tenant: "DefaultTenant"
+  folder: "Production"
+  environment: "Production"
+  authentication:
+    type: "machine_key"
+    machine_key_env: "UIPATH_MACHINE_KEY"
+runtime:
+  count: 10
+  container_prefix: "uipath-robot"
+  image: "uipathprod.azurecr.io/robot/uiautomation-runtime:latest24.10"
+  restart_policy: "unless-stopped"
+  max_count: 100
+  resources:
+    memory: null
+    cpus: null
+docker:
+  network_name: "uipath-runtime-network"
+  dns:
+    - "8.8.8.8"
+    - "1.1.1.1"
+packages:
+  cache_path: "/var/lib/uipath-runtime/packages"
+  nuget_config_path: "/var/lib/uipath-runtime/nuget/NuGet.Config"
+  container_cache_path: "/application/Packages"
+  container_nuget_config_path: "/home/robotuser/.nuget/NuGet/NuGet.Config"
+  official_feed:
+    enabled: true
+    name: "UiPath-Official"
+    url: "https://pkgs.dev.azure.com/uipath/Public.Feeds/_packaging/UiPath-Official/nuget/v3/index.json"
+tls:
+  ca_certificate: null
+  install_on_host: true
+  derived_image_prefix: "local/uipath-runtime"
+logs:
+  host_path: "/var/log/uipath-runtime"
+  retain_days: 30
+health:
+  startup_timeout_seconds: 120
+  connection_timeout_seconds: 30
+  restart_loop_threshold: 3
