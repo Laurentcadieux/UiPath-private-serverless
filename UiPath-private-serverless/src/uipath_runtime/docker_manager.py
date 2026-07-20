@@ -133,6 +133,8 @@ class DockerManager:
             health = HealthState.RUNNING_NOT_CONFIRMED if docker_state == "running" else HealthState.STOPPED
             if docker_state == "restarting":
                 health = HealthState.RESTARTING
+            if docker_state == "running" and _has_connection_evidence(_container_logs(container)):
+                health = HealthState.CONNECTED
             statuses.append(ContainerStatus(container.name, docker_state, health, image))
         return sorted(statuses, key=lambda item: item.name)
 
@@ -159,3 +161,24 @@ def detect_drift(attrs: dict[str, Any], spec: ContainerSpec) -> list[str]:
     if (host_config.get("RestartPolicy") or {}).get("Name") != spec.restart_policy:
         drift.append("restart policy")
     return drift
+
+
+def _container_logs(container: Any) -> str:
+    try:
+        raw = container.logs(tail=300)
+    except Exception:
+        return ""
+    if isinstance(raw, bytes):
+        return raw.decode("utf-8", errors="replace")
+    return str(raw)
+
+
+def _has_connection_evidence(log_text: str) -> bool:
+    return any(
+        marker in log_text
+        for marker in (
+            "Successfully connected to Orchestrator",
+            "HeartbeatV2 Status:OK",
+            "robotsservice/HeartbeatV2 Status:OK",
+        )
+    )
