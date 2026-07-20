@@ -74,6 +74,8 @@ Check whether idle excess containers are eligible to stop:
 
 ```bash
 uipath-runtime scale-check --config /etc/uipath-runtime/config.yaml
+uipath-runtime scale-check --config /etc/uipath-runtime/config.yaml --apply
+uipath-runtime scale-watch --config /etc/uipath-runtime/config.yaml --apply
 ```
 
 ## Safety Rules

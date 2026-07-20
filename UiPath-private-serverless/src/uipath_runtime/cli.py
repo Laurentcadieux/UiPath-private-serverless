@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from pathlib import Path
 
 from .config import DEFAULT_CONFIG_PATH, load_config, resolve_secrets
@@ -27,6 +28,8 @@ def main(argv: list[str] | None = None) -> int:
             return status_command(args)
         if args.command == "scale-check":
             return scale_check_command(args)
+        if args.command == "scale-watch":
+            return scale_watch_command(args)
         parser.print_help()
         return int(ExitCode.INVALID_CONFIGURATION)
     except RuntimeProvisionerError as exc:
@@ -55,6 +58,10 @@ def build_parser() -> argparse.ArgumentParser:
     scale_check = sub.add_parser("scale-check")
     scale_check.add_argument("--config", "-c", type=Path, default=DEFAULT_CONFIG_PATH)
     scale_check.add_argument("--apply", action="store_true", help="Stop eligible idle excess containers")
+    scale_watch = sub.add_parser("scale-watch")
+    scale_watch.add_argument("--config", "-c", type=Path, default=DEFAULT_CONFIG_PATH)
+    scale_watch.add_argument("--apply", action="store_true", help="Stop eligible idle excess containers")
+    scale_watch.add_argument("--iterations", type=int, help="Run a bounded number of checks; omit to run until interrupted")
     return parser
 
 
@@ -147,6 +154,24 @@ def scale_check_command(args) -> int:
     config = load_config(args.config)
     docker_manager = DockerManager()
     decisions = ScaleChecker().check(config, docker_manager, apply=args.apply)
+    _print_scale_decisions(config, decisions, applied=args.apply)
+    return int(ExitCode.SUCCESS)
+
+
+def scale_watch_command(args) -> int:
+    config = load_config(args.config)
+    docker_manager = DockerManager()
+    iterations = 0
+    while True:
+        decisions = ScaleChecker().check(config, docker_manager, apply=args.apply)
+        _print_scale_decisions(config, decisions, applied=args.apply)
+        iterations += 1
+        if args.iterations is not None and iterations >= args.iterations:
+            return int(ExitCode.SUCCESS)
+        time.sleep(config.scaling.poll_interval_seconds)
+
+
+def _print_scale_decisions(config, decisions, *, applied: bool) -> None:
     print("NAME STATE HEALTH ACTIVE IDLE_MIN ELIGIBLE ACTION")
     for decision in decisions:
         print(
@@ -158,8 +183,7 @@ def scale_check_command(args) -> int:
     print(f"Burst maximum: {config.scaling.burst_max_count}")
     print(f"Idle minutes before stop: {config.scaling.idle_minutes_before_stop}")
     print(f"Poll interval seconds: {config.scaling.poll_interval_seconds}")
-    print(f"Applied: {str(args.apply).lower()}")
-    return int(ExitCode.SUCCESS)
+    print(f"Applied: {str(applied).lower()}")
 
 
 if __name__ == "__main__":

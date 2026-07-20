@@ -115,3 +115,15 @@ Stop only idle excess containers above `minimum_count` after the configured idle
 ```bash
 uipath-runtime scale-check --config /etc/uipath-runtime/config.yaml --apply
 ```
+
+Run continuously every `poll_interval_seconds`:
+
+```bash
+uipath-runtime scale-watch --config /etc/uipath-runtime/config.yaml --apply
+```
+
+For a bounded smoke test:
+
+```bash
+uipath-runtime scale-watch --config /etc/uipath-runtime/config.yaml --iterations 1
+```
