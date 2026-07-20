@@ -79,6 +79,23 @@ class DockerManager:
         except Exception:
             return None
 
+    def exec_in_container(self, name: str, command: tuple[str, ...]) -> tuple[int, str]:
+        container = self.get_container(name)
+        if container is None:
+            return 127, "container not found"
+        result = container.exec_run(list(command), stdout=True, stderr=True)
+        output = result.output
+        if isinstance(output, bytes):
+            output_text = output.decode("utf-8", errors="replace")
+        else:
+            output_text = str(output)
+        return int(result.exit_code), output_text
+
+    def stop_container(self, name: str, *, timeout: int = 30) -> None:
+        container = self.get_container(name)
+        if container is not None:
+            container.stop(timeout=timeout)
+
     def ensure_container(self, spec: ContainerSpec, *, recreate: bool = False) -> tuple[str, ContainerStatus]:
         existing = self.get_container(spec.name)
         if existing:

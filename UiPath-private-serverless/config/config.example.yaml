@@ -42,3 +42,14 @@ health:
   startup_timeout_seconds: 120
   connection_timeout_seconds: 30
   restart_loop_threshold: 3
+scaling:
+  minimum_count: 1
+  burst_max_count: 5
+  idle_minutes_before_stop: 30
+  poll_interval_seconds: 60
+  state_path: "/var/lib/uipath-runtime/scaling-state.json"
+  active_job_probe:
+    command:
+      - "/bin/sh"
+      - "-lc"
+      - "pgrep -af 'UiPath.Executor|UiRobot|UiPath.Robot.Executor' >/dev/null"

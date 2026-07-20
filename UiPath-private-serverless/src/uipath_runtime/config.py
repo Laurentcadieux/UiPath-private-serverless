@@ -11,6 +11,7 @@ import yaml
 from .exceptions import InvalidConfigurationError
 from .models import (
     AppConfig,
+    ActiveJobProbeConfig,
     AuthenticationConfig,
     DockerConfig,
     HealthConfig,
@@ -20,13 +21,14 @@ from .models import (
     PackagesConfig,
     ResourceConfig,
     RuntimeConfig,
+    ScalingConfig,
     SecretBundle,
     TLSConfig,
 )
 
 DEFAULT_CONFIG_PATH = Path("/etc/uipath-runtime/config.yaml")
 SECRET_FILE_PATH = Path("/etc/uipath-runtime/secrets.env")
-ALLOWED_TOP_LEVEL = {"version", "orchestrator", "runtime", "docker", "packages", "tls", "logs", "health"}
+ALLOWED_TOP_LEVEL = {"version", "orchestrator", "runtime", "docker", "packages", "tls", "logs", "health", "scaling"}
 
 
 def load_config(path: Path = DEFAULT_CONFIG_PATH, *, count_override: int | None = None) -> AppConfig:
@@ -47,6 +49,8 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH, *, count_override: int | None 
     tls_raw = raw.get("tls") or {}
     logs_raw = raw.get("logs") or {}
     health_raw = raw.get("health") or {}
+    scaling_raw = raw.get("scaling") or {}
+    active_job_probe_raw = scaling_raw.get("active_job_probe") or {}
 
     auth_raw = orchestrator_raw.get("authentication") or {}
     auth = AuthenticationConfig(
@@ -113,6 +117,26 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH, *, count_override: int | None 
             connection_timeout_seconds=int(health_raw.get("connection_timeout_seconds", 30)),
             restart_loop_threshold=int(health_raw.get("restart_loop_threshold", 3)),
         ),
+        scaling=ScalingConfig(
+            minimum_count=int(scaling_raw.get("minimum_count", 1)),
+            burst_max_count=int(scaling_raw.get("burst_max_count", runtime.max_count)),
+            idle_minutes_before_stop=int(scaling_raw.get("idle_minutes_before_stop", 30)),
+            poll_interval_seconds=int(scaling_raw.get("poll_interval_seconds", 60)),
+            state_path=Path(scaling_raw.get("state_path", "/var/lib/uipath-runtime/scaling-state.json")),
+            active_job_probe=ActiveJobProbeConfig(
+                command=tuple(
+                    str(item)
+                    for item in active_job_probe_raw.get(
+                        "command",
+                        [
+                            "/bin/sh",
+                            "-lc",
+                            "pgrep -af 'UiPath.Executor|UiRobot|UiPath.Robot.Executor' >/dev/null",
+                        ],
+                    )
+                )
+            ),
+        ),
     )
     validate_config(config)
     return config
@@ -134,6 +158,20 @@ def validate_config(config: AppConfig) -> None:
         raise InvalidConfigurationError(
             f"runtime.count {config.runtime.count} exceeds maximum {config.runtime.max_count}"
         )
+    if config.scaling.minimum_count < 0:
+        raise InvalidConfigurationError("scaling.minimum_count must be at least 0")
+    if config.scaling.burst_max_count < config.scaling.minimum_count:
+        raise InvalidConfigurationError("scaling.burst_max_count must be greater than or equal to scaling.minimum_count")
+    if config.runtime.count > config.scaling.burst_max_count:
+        raise InvalidConfigurationError(
+            f"runtime.count {config.runtime.count} exceeds scaling.burst_max_count {config.scaling.burst_max_count}"
+        )
+    if config.scaling.idle_minutes_before_stop < 1:
+        raise InvalidConfigurationError("scaling.idle_minutes_before_stop must be at least 1")
+    if config.scaling.poll_interval_seconds < 1:
+        raise InvalidConfigurationError("scaling.poll_interval_seconds must be at least 1")
+    if not config.scaling.active_job_probe.command:
+        raise InvalidConfigurationError("scaling.active_job_probe.command must not be empty")
     if ":" not in config.runtime.image or config.runtime.image.endswith(":latest"):
         raise InvalidConfigurationError("runtime.image must contain an explicit non-latest tag")
     if not config.runtime.container_prefix:
@@ -151,6 +189,7 @@ def validate_config(config: AppConfig) -> None:
         config.packages.container_cache_path,
         config.packages.container_nuget_config_path,
         config.logs.host_path,
+        config.scaling.state_path,
     ]:
         if not path.is_absolute():
             raise InvalidConfigurationError(f"Path must be absolute: {path}")

@@ -13,6 +13,7 @@ from .logging_config import configure_logging
 from .network import NetworkValidator
 from .packages import ensure_nuget_config
 from .reconciliation import Reconciler
+from .scaling import ScaleChecker
 from .tls import CertificateManager
 
 
@@ -24,6 +25,8 @@ def main(argv: list[str] | None = None) -> int:
             return init_command(args)
         if args.command == "status":
             return status_command(args)
+        if args.command == "scale-check":
+            return scale_check_command(args)
         parser.print_help()
         return int(ExitCode.INVALID_CONFIGURATION)
     except RuntimeProvisionerError as exc:
@@ -49,6 +52,9 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--skip-host-prep", action="store_true", help="For tests/dev only; skips root and system mutation checks")
     status = sub.add_parser("status")
     status.add_argument("--config", "-c", type=Path, default=DEFAULT_CONFIG_PATH)
+    scale_check = sub.add_parser("scale-check")
+    scale_check.add_argument("--config", "-c", type=Path, default=DEFAULT_CONFIG_PATH)
+    scale_check.add_argument("--apply", action="store_true", help="Stop eligible idle excess containers")
     return parser
 
 
@@ -134,6 +140,25 @@ def status_command(args) -> int:
     print(f"Summary: Existing: {len(statuses)} Running: {sum(1 for item in statuses if item.docker_state == 'running')}")
     print(f"Custom CA: {'configured' if config.tls.ca_certificate else 'not configured'}")
     print(f"Effective image: {config.runtime.image}")
+    return int(ExitCode.SUCCESS)
+
+
+def scale_check_command(args) -> int:
+    config = load_config(args.config)
+    docker_manager = DockerManager()
+    decisions = ScaleChecker().check(config, docker_manager, apply=args.apply)
+    print("NAME STATE HEALTH ACTIVE IDLE_MIN ELIGIBLE ACTION")
+    for decision in decisions:
+        print(
+            f"{decision.name} {decision.docker_state} {decision.health.value.lower()} "
+            f"{decision.active_state} {decision.idle_minutes:.1f} "
+            f"{str(decision.eligible_to_stop).lower()} {decision.action}"
+        )
+    print(f"Minimum: {config.scaling.minimum_count}")
+    print(f"Burst maximum: {config.scaling.burst_max_count}")
+    print(f"Idle minutes before stop: {config.scaling.idle_minutes_before_stop}")
+    print(f"Poll interval seconds: {config.scaling.poll_interval_seconds}")
+    print(f"Applied: {str(args.apply).lower()}")
     return int(ExitCode.SUCCESS)
 
 

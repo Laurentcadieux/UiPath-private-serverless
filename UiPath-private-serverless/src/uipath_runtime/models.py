@@ -94,6 +94,25 @@ class HealthConfig:
 
 
 @dataclass(frozen=True)
+class ActiveJobProbeConfig:
+    command: tuple[str, ...] = (
+        "/bin/sh",
+        "-lc",
+        "pgrep -af 'UiPath.Executor|UiRobot|UiPath.Robot.Executor' >/dev/null",
+    )
+
+
+@dataclass(frozen=True)
+class ScalingConfig:
+    minimum_count: int = 1
+    burst_max_count: int = 1
+    idle_minutes_before_stop: int = 30
+    poll_interval_seconds: int = 60
+    state_path: Path = Path("/var/lib/uipath-runtime/scaling-state.json")
+    active_job_probe: ActiveJobProbeConfig = field(default_factory=ActiveJobProbeConfig)
+
+
+@dataclass(frozen=True)
 class AppConfig:
     version: int
     orchestrator: OrchestratorConfig
@@ -103,6 +122,7 @@ class AppConfig:
     tls: TLSConfig = field(default_factory=TLSConfig)
     logs: LogsConfig = field(default_factory=LogsConfig)
     health: HealthConfig = field(default_factory=HealthConfig)
+    scaling: ScalingConfig = field(default_factory=ScalingConfig)
 
 
 @dataclass(frozen=True)

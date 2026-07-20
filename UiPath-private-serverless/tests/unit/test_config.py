@@ -71,6 +71,31 @@ class ConfigTests(unittest.TestCase):
         with self.assertRaises(InvalidConfigurationError):
             load_config(self.write_config(bad))
 
+    def test_scaling_config_parses(self) -> None:
+        text = VALID_CONFIG + """
+scaling:
+  minimum_count: 2
+  burst_max_count: 12
+  idle_minutes_before_stop: 45
+  poll_interval_seconds: 90
+  active_job_probe:
+    command: ["/bin/sh", "-lc", "true"]
+"""
+        config = load_config(self.write_config(text))
+        self.assertEqual(config.scaling.minimum_count, 2)
+        self.assertEqual(config.scaling.burst_max_count, 12)
+        self.assertEqual(config.scaling.idle_minutes_before_stop, 45)
+        self.assertEqual(config.scaling.active_job_probe.command, ("/bin/sh", "-lc", "true"))
+
+    def test_runtime_count_cannot_exceed_burst_max(self) -> None:
+        text = VALID_CONFIG + """
+scaling:
+  minimum_count: 1
+  burst_max_count: 3
+"""
+        with self.assertRaises(InvalidConfigurationError):
+            load_config(self.write_config(text))
+
 
 if __name__ == "__main__":
     unittest.main()

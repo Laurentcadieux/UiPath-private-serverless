@@ -70,6 +70,12 @@ Check managed containers:
 uipath-runtime status --config /etc/uipath-runtime/config.yaml
 ```
 
+Check whether idle excess containers are eligible to stop:
+
+```bash
+uipath-runtime scale-check --config /etc/uipath-runtime/config.yaml
+```
+
 ## Safety Rules
 
 - Machine keys are read from environment or root-only secret file, never from YAML.

@@ -83,3 +83,35 @@ uipath-robot-001 running connected uipathprod.azurecr.io/robot/uiautomation-runt
 - `CONNECTED` is reported only when logs show successful Orchestrator connection or heartbeat evidence.
 - Start with `--count 1` on a new host, then scale after verifying memory, disk, and Orchestrator behavior.
 - Use `--recreate` only when intentionally replacing drifted containers.
+
+## Idle Scale Check
+
+The scaler is report-only by default. It runs a configurable command inside each managed container to decide whether a Robot appears active.
+
+Config:
+
+```yaml
+scaling:
+  minimum_count: 1
+  burst_max_count: 5
+  idle_minutes_before_stop: 30
+  poll_interval_seconds: 60
+  state_path: "/var/lib/uipath-runtime/scaling-state.json"
+  active_job_probe:
+    command:
+      - "/bin/sh"
+      - "-lc"
+      - "pgrep -af 'UiPath.Executor|UiRobot|UiPath.Robot.Executor' >/dev/null"
+```
+
+Check without stopping anything:
+
+```bash
+uipath-runtime scale-check --config /etc/uipath-runtime/config.yaml
+```
+
+Stop only idle excess containers above `minimum_count` after the configured idle window:
+
+```bash
+uipath-runtime scale-check --config /etc/uipath-runtime/config.yaml --apply
+```
