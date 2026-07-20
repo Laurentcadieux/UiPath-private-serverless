@@ -73,10 +73,43 @@ uipath-runtime status --config /etc/uipath-runtime/config.yaml
 Check whether idle excess containers are eligible to stop:
 
 ```bash
+# Report only. This never stops containers.
 uipath-runtime scale-check --config /etc/uipath-runtime/config.yaml
+
+# Stop eligible idle containers, but never below scaling.minimum_count.
 uipath-runtime scale-check --config /etc/uipath-runtime/config.yaml --apply
+
+# Run the same guard continuously every scaling.poll_interval_seconds.
 uipath-runtime scale-watch --config /etc/uipath-runtime/config.yaml --apply
 ```
+
+## Idle Scaling
+
+Use the `scaling` block in `/etc/uipath-runtime/config.yaml` to define the steady-state minimum, burst ceiling, idle window, polling interval, and active-job probe:
+
+```yaml
+scaling:
+  minimum_count: 1
+  burst_max_count: 5
+  idle_minutes_before_stop: 30
+  poll_interval_seconds: 60
+  state_path: "/var/lib/uipath-runtime/scaling-state.json"
+  active_job_probe:
+    command:
+      - "/bin/sh"
+      - "-lc"
+      - "pgrep -af 'UiPath.Executor|UiRobot|UiPath.Robot.Executor' >/dev/null"
+```
+
+`scale-check` executes the configured probe inside every managed Robot container. Probe exit code `0` means active, `1` means idle, and any other result is treated conservatively as unknown and kept running. Idle timestamps are persisted in `state_path`, so a container is only eligible after it has been idle for the configured number of minutes.
+
+Before turning off or shrinking a host, run:
+
+```bash
+uipath-runtime scale-check --config /etc/uipath-runtime/config.yaml
+```
+
+Only use `--apply` when you want the tool to stop excess idle containers above `minimum_count`.
 
 ## Safety Rules
 
@@ -86,9 +119,11 @@ uipath-runtime scale-watch --config /etc/uipath-runtime/config.yaml --apply
 - Containers are managed only through `com.uipath.runtime.*` labels.
 - Existing drifted containers are reported, not recreated, unless `--recreate` is supplied.
 - Decreasing desired count never removes containers in MVP 1.
+- Idle scaling is conservative: report-only by default, keeps `minimum_count`, and treats unknown probes as active.
 
 ## Current Status
 
 - MVP CLI source created.
-- Unit tests cover config validation, naming, secret masking, CA validation failures, deterministic CA image tags, drift detection, reconciliation, and exit-code mapping.
+- Unit tests cover config validation, naming, secret masking, CA validation failures, deterministic CA image tags, drift detection, reconciliation, exit-code mapping, health log evidence, and idle scaling decisions.
+- Live host `67.205.173.227` verified with one connected Robot, scale-up to five connected Robots, idempotent rerun, scale-down back to one, and live `scale-check`/`scale-watch` smoke tests.
 - No public endpoint is exposed.

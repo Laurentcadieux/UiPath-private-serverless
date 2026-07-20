@@ -110,6 +110,8 @@ Check without stopping anything:
 uipath-runtime scale-check --config /etc/uipath-runtime/config.yaml
 ```
 
+Use this as the pre-shutdown check before turning off or shrinking a host. Review `ACTIVE`, `IDLE_MIN`, and `ACTION`; do not shut down the host while any required container is active.
+
 Stop only idle excess containers above `minimum_count` after the configured idle window:
 
 ```bash
@@ -127,3 +129,12 @@ For a bounded smoke test:
 ```bash
 uipath-runtime scale-watch --config /etc/uipath-runtime/config.yaml --iterations 1
 ```
+
+Output fields:
+
+- `ACTIVE`: `active`, `idle`, or `unknown`.
+- `IDLE_MIN`: minutes since the last active probe for that container.
+- `ELIGIBLE`: whether the container has passed the idle window.
+- `ACTION`: `keep`, `stop`, or `stopped`.
+
+Unknown probe results are kept running. This avoids stopping a Robot when the tool cannot prove it is idle.
