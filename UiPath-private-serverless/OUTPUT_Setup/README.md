@@ -54,6 +54,13 @@ To require a preloaded image and fail instead of pulling:
 PULL_IMAGE=0 sudo -E bash OUTPUT_Setup/init-product.sh
 ```
 
+After changing `/etc/uipath-runtime/config.yaml`, recreate the managed containers so
+the updated environment reaches the Robot runtime:
+
+```bash
+RECREATE=1 sudo -E bash OUTPUT_Setup/init-product.sh
+```
+
 ## Environment
 
 - `REPO_URL` - repository to clone when setup is run from a raw URL
@@ -67,3 +74,4 @@ PULL_IMAGE=0 sudo -E bash OUTPUT_Setup/init-product.sh
 - `RUN_INIT=1` - run `init-product.sh` after install
 - `IMAGE_TAR` - optional local UiPath Robot image archive used by `init-product.sh`
 - `PULL_IMAGE` - pull the configured Robot image when missing; default: `1`
+- `RECREATE=1` - replace managed containers when config/env values changed

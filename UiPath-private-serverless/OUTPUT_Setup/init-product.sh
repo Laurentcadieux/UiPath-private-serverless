@@ -7,6 +7,7 @@ COUNT="${COUNT:-1}"
 TARGET="${TARGET:-uipath-robot}"
 IMAGE_TAR="${IMAGE_TAR:-}"
 PULL_IMAGE="${PULL_IMAGE:-1}"
+RECREATE="${RECREATE:-0}"
 
 runtime_image_from_config() {
   awk '
@@ -74,6 +75,10 @@ command_args=(
 
 if [ -n "$IMAGE_TAR" ]; then
   command_args+=(--image-tar "$IMAGE_TAR")
+fi
+
+if [ "$RECREATE" = "1" ]; then
+  command_args+=(--recreate)
 fi
 
 uipath-runtime "${command_args[@]}"
