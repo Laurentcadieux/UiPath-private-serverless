@@ -13,6 +13,8 @@ sudo -E bash OUTPUT_Setup/install.sh
 sudo -E bash OUTPUT_Setup/init-product.sh
 ```
 
+`init-product.sh` checks that the configured UiPath Robot image exists locally before it starts containers.
+
 ## One-Step Host Bootstrap
 
 Use this when starting from a fresh Ubuntu host:
@@ -30,6 +32,26 @@ To install and immediately run initialization:
 export RUN_INIT=1
 export COUNT=10
 curl -fsSL "$REPO_URL/raw/$BRANCH/OUTPUT_Setup/install.sh" | sudo -E bash
+```
+
+## Image Step
+
+The setup installs Docker and the product CLI, but it does not invent or download a UiPath Robot image silently. Before init, load or pull the configured image:
+
+```bash
+docker load --input /path/to/uipath-robot-image.tar
+```
+
+or, if registry access is available:
+
+```bash
+docker pull uipathprod.azurecr.io/robot/uiautomation-runtime:latest24.10
+```
+
+You can also pass a local archive directly to init:
+
+```bash
+IMAGE_TAR=/path/to/uipath-robot-image.tar sudo -E bash OUTPUT_Setup/init-product.sh
 ```
 
 ## Environment

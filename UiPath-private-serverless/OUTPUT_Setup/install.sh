@@ -10,6 +10,19 @@ SECRETS_PATH="${SECRETS_PATH:-/etc/uipath-runtime/secrets.env}"
 COUNT="${COUNT:-1}"
 RUN_INIT="${RUN_INIT:-0}"
 
+runtime_image_from_config() {
+  awk '
+    /^runtime:/ { in_runtime = 1; next }
+    /^[^[:space:]]/ { in_runtime = 0 }
+    in_runtime && /^[[:space:]]+image:/ {
+      sub(/^[[:space:]]+image:[[:space:]]*/, "")
+      gsub(/^"|"$/, "")
+      print
+      exit
+    }
+  ' "$CONFIG_PATH"
+}
+
 if [ "$(id -u)" -ne 0 ]; then
   echo "ERROR: run as root, for example: sudo -E bash OUTPUT_Setup/install.sh" >&2
   exit 3
@@ -75,12 +88,21 @@ if [ -n "${UIPATH_MACHINE_KEY:-}" ]; then
   chmod 600 "$SECRETS_PATH"
 fi
 
+RUNTIME_IMAGE="$(runtime_image_from_config)"
+
 echo "Installed UiPath private serverless runtime."
 echo "Repository: $REPO_ROOT"
 echo "Product folder: $PRODUCT_DIR"
 echo "Config: $CONFIG_PATH"
 echo "Secrets: $SECRETS_PATH"
 echo "Docker: $(docker --version)"
+echo
+echo "Image step before init:"
+echo "  docker load --input /path/to/uipath-robot-image.tar"
+if [ -n "$RUNTIME_IMAGE" ]; then
+  echo "  # or, if registry access is available:"
+  echo "  docker pull $RUNTIME_IMAGE"
+fi
 echo
 echo "Next step:"
 echo "  sudo -E bash $SETUP_DIR/init-product.sh"
