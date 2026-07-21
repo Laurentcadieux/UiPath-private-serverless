@@ -87,6 +87,45 @@ scaling:
         self.assertEqual(config.scaling.idle_minutes_before_stop, 45)
         self.assertEqual(config.scaling.active_job_probe.command, ("/bin/sh", "-lc", "true"))
 
+    def test_autoscaling_config_parses(self) -> None:
+        text = VALID_CONFIG + """
+autoscaling:
+  enabled: true
+  provider: "digitalocean"
+  min_vms: 1
+  max_vms: 4
+  scale_up_active_ratio: 0.75
+  scale_down_active_ratio: 0.2
+  scale_down_idle_minutes: 15
+  protected_vm_names: ["uipath-runtime-worker-keep"]
+  digitalocean:
+    token_env: "DO_TOKEN"
+    region: "nyc1"
+    size: "s-2vcpu-2gb"
+    image: "ubuntu-24-04-x64"
+    ssh_keys: ["12345"]
+    tags: ["uipath-runtime"]
+    name_prefix: "uipath-runtime-worker"
+    user_data_path: "/opt/uipath-runtime/cloud-init.yaml"
+"""
+        config = load_config(self.write_config(text))
+        self.assertTrue(config.autoscaling.enabled)
+        self.assertEqual(config.autoscaling.max_vms, 4)
+        self.assertEqual(config.autoscaling.scale_up_active_ratio, 0.75)
+        self.assertEqual(config.autoscaling.protected_vm_names, ("uipath-runtime-worker-keep",))
+        self.assertEqual(config.autoscaling.digitalocean.token_env, "DO_TOKEN")
+        self.assertEqual(config.autoscaling.digitalocean.ssh_keys, ("12345",))
+
+    def test_invalid_autoscaling_limits_fail(self) -> None:
+        text = VALID_CONFIG + """
+autoscaling:
+  enabled: true
+  min_vms: 3
+  max_vms: 2
+"""
+        with self.assertRaises(InvalidConfigurationError):
+            load_config(self.write_config(text))
+
     def test_runtime_count_cannot_exceed_burst_max(self) -> None:
         text = VALID_CONFIG + """
 scaling:

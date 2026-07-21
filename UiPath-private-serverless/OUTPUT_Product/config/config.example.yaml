@@ -53,3 +53,22 @@ scaling:
       - "/bin/sh"
       - "-lc"
       - "pgrep -af 'UiPath.Executor|UiRobot|UiPath.Robot.Executor' >/dev/null"
+autoscaling:
+  enabled: false
+  provider: "digitalocean"
+  min_vms: 1
+  max_vms: 3
+  scale_up_active_ratio: 0.8
+  scale_down_active_ratio: 0.1
+  scale_down_idle_minutes: 30
+  protected_vm_names: []
+  digitalocean:
+    token_env: "DIGITALOCEAN_TOKEN"
+    region: "nyc1"
+    size: "s-2vcpu-2gb"
+    image: "ubuntu-24-04-x64"
+    ssh_keys: []
+    tags:
+      - "uipath-runtime"
+    name_prefix: "uipath-runtime-worker"
+    user_data_path: null

@@ -13,6 +13,8 @@ from .models import (
     AppConfig,
     ActiveJobProbeConfig,
     AuthenticationConfig,
+    AutoscalingConfig,
+    DigitalOceanConfig,
     DockerConfig,
     HealthConfig,
     LogsConfig,
@@ -28,7 +30,18 @@ from .models import (
 
 DEFAULT_CONFIG_PATH = Path("/etc/uipath-runtime/config.yaml")
 SECRET_FILE_PATH = Path("/etc/uipath-runtime/secrets.env")
-ALLOWED_TOP_LEVEL = {"version", "orchestrator", "runtime", "docker", "packages", "tls", "logs", "health", "scaling"}
+ALLOWED_TOP_LEVEL = {
+    "version",
+    "orchestrator",
+    "runtime",
+    "docker",
+    "packages",
+    "tls",
+    "logs",
+    "health",
+    "scaling",
+    "autoscaling",
+}
 
 
 def load_config(path: Path = DEFAULT_CONFIG_PATH, *, count_override: int | None = None) -> AppConfig:
@@ -51,6 +64,8 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH, *, count_override: int | None 
     health_raw = raw.get("health") or {}
     scaling_raw = raw.get("scaling") or {}
     active_job_probe_raw = scaling_raw.get("active_job_probe") or {}
+    autoscaling_raw = raw.get("autoscaling") or {}
+    digitalocean_raw = autoscaling_raw.get("digitalocean") or {}
 
     auth_raw = orchestrator_raw.get("authentication") or {}
     auth = AuthenticationConfig(
@@ -137,6 +152,26 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH, *, count_override: int | None 
                 )
             ),
         ),
+        autoscaling=AutoscalingConfig(
+            enabled=_bool(autoscaling_raw.get("enabled", False)),
+            provider=str(autoscaling_raw.get("provider", "digitalocean")),
+            min_vms=int(autoscaling_raw.get("min_vms", 1)),
+            max_vms=int(autoscaling_raw.get("max_vms", 1)),
+            scale_up_active_ratio=float(autoscaling_raw.get("scale_up_active_ratio", 0.8)),
+            scale_down_active_ratio=float(autoscaling_raw.get("scale_down_active_ratio", 0.1)),
+            scale_down_idle_minutes=int(autoscaling_raw.get("scale_down_idle_minutes", 30)),
+            protected_vm_names=tuple(str(item) for item in autoscaling_raw.get("protected_vm_names", [])),
+            digitalocean=DigitalOceanConfig(
+                token_env=str(digitalocean_raw.get("token_env", "DIGITALOCEAN_TOKEN")),
+                region=str(digitalocean_raw.get("region", "nyc1")),
+                size=str(digitalocean_raw.get("size", "s-2vcpu-2gb")),
+                image=str(digitalocean_raw.get("image", "ubuntu-24-04-x64")),
+                ssh_keys=tuple(str(item) for item in digitalocean_raw.get("ssh_keys", [])),
+                tags=tuple(str(item) for item in digitalocean_raw.get("tags", ["uipath-runtime"])),
+                name_prefix=str(digitalocean_raw.get("name_prefix", "uipath-runtime-worker")),
+                user_data_path=_optional_path(digitalocean_raw.get("user_data_path")),
+            ),
+        ),
     )
     validate_config(config)
     return config
@@ -172,6 +207,34 @@ def validate_config(config: AppConfig) -> None:
         raise InvalidConfigurationError("scaling.poll_interval_seconds must be at least 1")
     if not config.scaling.active_job_probe.command:
         raise InvalidConfigurationError("scaling.active_job_probe.command must not be empty")
+    if config.autoscaling.provider != "digitalocean":
+        raise InvalidConfigurationError(f"Unsupported autoscaling provider: {config.autoscaling.provider}")
+    if config.autoscaling.min_vms < 1:
+        raise InvalidConfigurationError("autoscaling.min_vms must be at least 1")
+    if config.autoscaling.max_vms < config.autoscaling.min_vms:
+        raise InvalidConfigurationError("autoscaling.max_vms must be greater than or equal to autoscaling.min_vms")
+    for name, value in [
+        ("autoscaling.scale_up_active_ratio", config.autoscaling.scale_up_active_ratio),
+        ("autoscaling.scale_down_active_ratio", config.autoscaling.scale_down_active_ratio),
+    ]:
+        if value < 0 or value > 1:
+            raise InvalidConfigurationError(f"{name} must be between 0 and 1")
+    if config.autoscaling.scale_down_idle_minutes < 1:
+        raise InvalidConfigurationError("autoscaling.scale_down_idle_minutes must be at least 1")
+    if not config.autoscaling.digitalocean.token_env:
+        raise InvalidConfigurationError("autoscaling.digitalocean.token_env is required")
+    if not config.autoscaling.digitalocean.region:
+        raise InvalidConfigurationError("autoscaling.digitalocean.region is required")
+    if not config.autoscaling.digitalocean.size:
+        raise InvalidConfigurationError("autoscaling.digitalocean.size is required")
+    if not config.autoscaling.digitalocean.image:
+        raise InvalidConfigurationError("autoscaling.digitalocean.image is required")
+    if not config.autoscaling.digitalocean.name_prefix:
+        raise InvalidConfigurationError("autoscaling.digitalocean.name_prefix is required")
+    if config.autoscaling.digitalocean.user_data_path is not None and not config.autoscaling.digitalocean.user_data_path.is_absolute():
+        raise InvalidConfigurationError(
+            f"autoscaling.digitalocean.user_data_path must be absolute: {config.autoscaling.digitalocean.user_data_path}"
+        )
     if ":" not in config.runtime.image or config.runtime.image.endswith(":latest"):
         raise InvalidConfigurationError("runtime.image must contain an explicit non-latest tag")
     if not config.runtime.container_prefix:
@@ -237,3 +300,11 @@ def _optional_path(value: Any) -> Path | None:
     if value in (None, ""):
         return None
     return Path(str(value))
+
+
+def _bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)

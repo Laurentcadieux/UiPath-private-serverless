@@ -10,7 +10,7 @@ OUTPUT_Product/
 ```
 
 - `OUTPUT_Setup/` prepares a host after cloning the repo.
-- `OUTPUT_Product/` contains the deployable tool, product docs, source, config, and tests.
+- `OUTPUT_Product/` contains the deployable tool, product docs, source, config, tests, and optional VM autoscaling.
 
 The intended first-run flow is:
 
@@ -22,6 +22,10 @@ sudo -E bash OUTPUT_Setup/init-product.sh
 ```
 
 `init-product.sh` pulls the configured UiPath Robot image when it is missing. For offline installs, pass `IMAGE_TAR=/path/to/uipath-robot-image.tar`.
+
+VM autoscaling is available but disabled by default. Enable `autoscaling.enabled`
+in `/etc/uipath-runtime/config.yaml`, then use `uipath-runtime autoscale-check`
+for dry-run monitoring and `--apply` only when cloud VM creation/deletion should run.
 
 ## Setup Folder
 

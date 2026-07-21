@@ -5,6 +5,7 @@ import sys
 import time
 from pathlib import Path
 
+from .autoscaling import Autoscaler, CloudVm, DigitalOceanProvider
 from .config import DEFAULT_CONFIG_PATH, load_config, resolve_secrets
 from .derived_image import DerivedImageManager
 from .docker_manager import DockerManager
@@ -30,6 +31,10 @@ def main(argv: list[str] | None = None) -> int:
             return scale_check_command(args)
         if args.command == "scale-watch":
             return scale_watch_command(args)
+        if args.command == "autoscale-check":
+            return autoscale_check_command(args)
+        if args.command == "autoscale-watch":
+            return autoscale_watch_command(args)
         parser.print_help()
         return int(ExitCode.INVALID_CONFIGURATION)
     except RuntimeProvisionerError as exc:
@@ -62,6 +67,13 @@ def build_parser() -> argparse.ArgumentParser:
     scale_watch.add_argument("--config", "-c", type=Path, default=DEFAULT_CONFIG_PATH)
     scale_watch.add_argument("--apply", action="store_true", help="Stop eligible idle excess containers")
     scale_watch.add_argument("--iterations", type=int, help="Run a bounded number of checks; omit to run until interrupted")
+    autoscale_check = sub.add_parser("autoscale-check")
+    autoscale_check.add_argument("--config", "-c", type=Path, default=DEFAULT_CONFIG_PATH)
+    autoscale_check.add_argument("--apply", action="store_true", help="Create/delete cloud VMs when thresholds are crossed")
+    autoscale_watch = sub.add_parser("autoscale-watch")
+    autoscale_watch.add_argument("--config", "-c", type=Path, default=DEFAULT_CONFIG_PATH)
+    autoscale_watch.add_argument("--apply", action="store_true", help="Create/delete cloud VMs when thresholds are crossed")
+    autoscale_watch.add_argument("--iterations", type=int, help="Run a bounded number of checks; omit to run until interrupted")
     return parser
 
 
@@ -171,6 +183,46 @@ def scale_watch_command(args) -> int:
         time.sleep(config.scaling.poll_interval_seconds)
 
 
+def autoscale_check_command(args) -> int:
+    config = load_config(args.config)
+    docker_manager = DockerManager()
+    provider = _autoscaling_provider(config)
+    usage, decision = Autoscaler().check(config, docker_manager, provider, apply=args.apply)
+    _print_autoscale_decision(usage, decision)
+    return int(ExitCode.SUCCESS)
+
+
+def autoscale_watch_command(args) -> int:
+    config = load_config(args.config)
+    docker_manager = DockerManager()
+    provider = _autoscaling_provider(config)
+    iterations = 0
+    while True:
+        usage, decision = Autoscaler().check(config, docker_manager, provider, apply=args.apply)
+        _print_autoscale_decision(usage, decision)
+        iterations += 1
+        if args.iterations is not None and iterations >= args.iterations:
+            return int(ExitCode.SUCCESS)
+        time.sleep(config.scaling.poll_interval_seconds)
+
+
+def _autoscaling_provider(config):
+    if not config.autoscaling.enabled:
+        return _DisabledCloudProvider()
+    return DigitalOceanProvider(config)
+
+
+class _DisabledCloudProvider:
+    def list_vms(self) -> list[CloudVm]:
+        return []
+
+    def create_vm(self, name: str) -> CloudVm:
+        raise RuntimeError("autoscaling is disabled")
+
+    def delete_vm(self, vm_id: str) -> None:
+        raise RuntimeError("autoscaling is disabled")
+
+
 def _print_scale_decisions(config, decisions, *, applied: bool) -> None:
     print("NAME STATE HEALTH ACTIVE IDLE_MIN ELIGIBLE ACTION")
     for decision in decisions:
@@ -184,6 +236,27 @@ def _print_scale_decisions(config, decisions, *, applied: bool) -> None:
     print(f"Idle minutes before stop: {config.scaling.idle_minutes_before_stop}")
     print(f"Poll interval seconds: {config.scaling.poll_interval_seconds}")
     print(f"Applied: {str(applied).lower()}")
+
+
+def _print_autoscale_decision(usage, decision) -> None:
+    print("AUTOSCALING USAGE")
+    print(f"Enabled: {str(decision.enabled).lower()}")
+    print(f"Provider: {decision.provider}")
+    print(f"Containers total: {usage.total}")
+    print(f"Containers running: {usage.running}")
+    print(f"Containers active: {usage.active}")
+    print(f"Containers idle: {usage.idle}")
+    print(f"Containers unknown: {usage.unknown}")
+    print(f"Active ratio: {usage.active_ratio:.2f}")
+    print(f"Minimum idle minutes: {usage.min_idle_minutes:.1f}")
+    print("AUTOSCALING DECISION")
+    print(f"Current VMs: {decision.current_vms}")
+    print(f"Minimum VMs: {decision.min_vms}")
+    print(f"Maximum VMs: {decision.max_vms}")
+    print(f"Action: {decision.action}")
+    print(f"Target VM: {decision.target_vm or '-'}")
+    print(f"Applied: {str(decision.applied).lower()}")
+    print(f"Reason: {decision.reason}")
 
 
 if __name__ == "__main__":

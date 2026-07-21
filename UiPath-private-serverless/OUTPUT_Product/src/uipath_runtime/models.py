@@ -113,6 +113,31 @@ class ScalingConfig:
 
 
 @dataclass(frozen=True)
+class DigitalOceanConfig:
+    token_env: str = "DIGITALOCEAN_TOKEN"
+    region: str = "nyc1"
+    size: str = "s-2vcpu-2gb"
+    image: str = "ubuntu-24-04-x64"
+    ssh_keys: tuple[str, ...] = ()
+    tags: tuple[str, ...] = ("uipath-runtime",)
+    name_prefix: str = "uipath-runtime-worker"
+    user_data_path: Path | None = None
+
+
+@dataclass(frozen=True)
+class AutoscalingConfig:
+    enabled: bool = False
+    provider: str = "digitalocean"
+    min_vms: int = 1
+    max_vms: int = 1
+    scale_up_active_ratio: float = 0.8
+    scale_down_active_ratio: float = 0.1
+    scale_down_idle_minutes: int = 30
+    protected_vm_names: tuple[str, ...] = ()
+    digitalocean: DigitalOceanConfig = field(default_factory=DigitalOceanConfig)
+
+
+@dataclass(frozen=True)
 class AppConfig:
     version: int
     orchestrator: OrchestratorConfig
@@ -123,6 +148,7 @@ class AppConfig:
     logs: LogsConfig = field(default_factory=LogsConfig)
     health: HealthConfig = field(default_factory=HealthConfig)
     scaling: ScalingConfig = field(default_factory=ScalingConfig)
+    autoscaling: AutoscalingConfig = field(default_factory=AutoscalingConfig)
 
 
 @dataclass(frozen=True)

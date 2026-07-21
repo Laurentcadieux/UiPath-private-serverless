@@ -6,8 +6,8 @@ Production-oriented Python CLI for provisioning a local Ubuntu host as a private
 
 - Initialize Ubuntu 22.04/24.04 amd64 hosts for UiPath Linux Robot containers.
 - Create deterministic local Docker containers from a preloaded UiPath Robot image.
-- Keep image handling local-only: the MVP never runs `docker pull`.
-- Connect containers to an on-premises UiPath Orchestrator via machine key.
+- Pull the configured UiPath Robot image during setup init when it is missing, with an offline `IMAGE_TAR` path available.
+- Connect containers to UiPath Orchestrator via machine key.
 - Support configurable DNS, package feeds, shared package cache, optional private CA, labels, logs, status, and drift detection.
 
 ## Layout
@@ -117,19 +117,71 @@ uipath-runtime scale-check --config /etc/uipath-runtime/config.yaml
 
 Only use `--apply` when you want the tool to stop excess idle containers above `minimum_count`.
 
+## VM Autoscaling
+
+VM autoscaling is disabled by default and is separate from local container idle scaling.
+When enabled, `autoscale-check` monitors local Robot container usage and decides whether
+to add or remove a tagged cloud VM. It is report-only unless `--apply` is supplied.
+
+```yaml
+autoscaling:
+  enabled: false
+  provider: "digitalocean"
+  min_vms: 1
+  max_vms: 3
+  scale_up_active_ratio: 0.8
+  scale_down_active_ratio: 0.1
+  scale_down_idle_minutes: 30
+  protected_vm_names: []
+  digitalocean:
+    token_env: "DIGITALOCEAN_TOKEN"
+    region: "nyc1"
+    size: "s-2vcpu-2gb"
+    image: "ubuntu-24-04-x64"
+    ssh_keys: []
+    tags:
+      - "uipath-runtime"
+    name_prefix: "uipath-runtime-worker"
+    user_data_path: null
+```
+
+Dry-run a VM autoscaling decision:
+
+```bash
+uipath-runtime autoscale-check --config /etc/uipath-runtime/config.yaml
+```
+
+Apply one decision:
+
+```bash
+export DIGITALOCEAN_TOKEN="dop_v1_..."
+uipath-runtime autoscale-check --config /etc/uipath-runtime/config.yaml --apply
+```
+
+Run continuously:
+
+```bash
+uipath-runtime autoscale-watch --config /etc/uipath-runtime/config.yaml --apply
+```
+
+The DigitalOcean provider lists Droplets by the first configured tag, creates workers
+with the configured region/size/image/SSH keys/user data, and deletes only matching
+managed VMs that are not in `protected_vm_names`.
+
 ## Safety Rules
 
 - Machine keys are read from environment or root-only secret file, never from YAML.
 - Machine keys are masked in output.
-- The configured UiPath image must exist locally; automatic image pull is out of scope.
+- `init-product.sh` pulls the configured image when it is missing unless `PULL_IMAGE=0` is set.
 - Containers are managed only through `com.uipath.runtime.*` labels.
 - Existing drifted containers are reported, not recreated, unless `--recreate` is supplied.
 - Decreasing desired count never removes containers in MVP 1.
 - Idle scaling is conservative: report-only by default, keeps `minimum_count`, and treats unknown probes as active.
+- VM autoscaling is off by default, report-only without `--apply`, and needs a cloud API token before changing VMs.
 
 ## Current Status
 
 - MVP CLI source created.
-- Unit tests cover config validation, naming, secret masking, CA validation failures, deterministic CA image tags, drift detection, reconciliation, exit-code mapping, health log evidence, and idle scaling decisions.
+- Unit tests cover config validation, naming, secret masking, CA validation failures, deterministic CA image tags, drift detection, reconciliation, exit-code mapping, health log evidence, idle scaling decisions, and VM autoscaling decisions.
 - Live host `67.205.173.227` verified with one connected Robot, scale-up to five connected Robots, idempotent rerun, scale-down back to one, and live `scale-check`/`scale-watch` smoke tests.
 - No public endpoint is exposed.
