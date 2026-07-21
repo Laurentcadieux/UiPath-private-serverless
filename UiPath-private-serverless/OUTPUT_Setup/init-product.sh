@@ -6,6 +6,7 @@ SECRETS_PATH="${SECRETS_PATH:-/etc/uipath-runtime/secrets.env}"
 COUNT="${COUNT:-1}"
 TARGET="${TARGET:-uipath-robot}"
 IMAGE_TAR="${IMAGE_TAR:-}"
+PULL_IMAGE="${PULL_IMAGE:-1}"
 
 runtime_image_from_config() {
   awk '
@@ -44,18 +45,23 @@ if [ -n "$IMAGE_TAR" ]; then
     exit 2
   fi
 elif [ -n "$RUNTIME_IMAGE" ] && ! docker image inspect "$RUNTIME_IMAGE" >/dev/null 2>&1; then
-  echo "ERROR: UiPath Robot image is not available locally." >&2
-  echo "Required image: $RUNTIME_IMAGE" >&2
-  echo >&2
-  echo "Load the image before running init:" >&2
-  echo "  docker load --input /path/to/uipath-robot-image.tar" >&2
-  echo >&2
-  echo "Or, if registry access is available:" >&2
-  echo "  docker pull $RUNTIME_IMAGE" >&2
-  echo >&2
-  echo "You can also pass an archive directly to this script:" >&2
-  echo "  IMAGE_TAR=/path/to/uipath-robot-image.tar bash OUTPUT_Setup/init-product.sh" >&2
-  exit 2
+  if [ "$PULL_IMAGE" = "1" ]; then
+    echo "UiPath Robot image missing locally; pulling $RUNTIME_IMAGE"
+    docker pull "$RUNTIME_IMAGE"
+  else
+    echo "ERROR: UiPath Robot image is not available locally." >&2
+    echo "Required image: $RUNTIME_IMAGE" >&2
+    echo >&2
+    echo "Load the image before running init:" >&2
+    echo "  docker load --input /path/to/uipath-robot-image.tar" >&2
+    echo >&2
+    echo "Or allow init-product.sh to pull it:" >&2
+    echo "  PULL_IMAGE=1 bash OUTPUT_Setup/init-product.sh" >&2
+    echo >&2
+    echo "You can also pass an archive directly to this script:" >&2
+    echo "  IMAGE_TAR=/path/to/uipath-robot-image.tar bash OUTPUT_Setup/init-product.sh" >&2
+    exit 2
+  fi
 fi
 
 command_args=(

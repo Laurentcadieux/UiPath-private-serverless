@@ -18,11 +18,10 @@ The intended first-run flow is:
 git clone https://github.com/Laurentcadieux/UiPath-private-serverless.git
 cd UiPath-private-serverless
 sudo -E bash OUTPUT_Setup/install.sh
-docker load --input /path/to/uipath-robot-image.tar
 sudo -E bash OUTPUT_Setup/init-product.sh
 ```
 
-If registry access is available, `docker pull uipathprod.azurecr.io/robot/uiautomation-runtime:latest24.10` can replace the `docker load` step.
+`init-product.sh` pulls the configured UiPath Robot image when it is missing. For offline installs, pass `IMAGE_TAR=/path/to/uipath-robot-image.tar`.
 
 ## Setup Folder
 

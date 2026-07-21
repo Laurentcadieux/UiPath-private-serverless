@@ -9,6 +9,7 @@ CONFIG_PATH="${CONFIG_PATH:-/etc/uipath-runtime/config.yaml}"
 SECRETS_PATH="${SECRETS_PATH:-/etc/uipath-runtime/secrets.env}"
 COUNT="${COUNT:-1}"
 RUN_INIT="${RUN_INIT:-0}"
+PULL_IMAGE="${PULL_IMAGE:-1}"
 
 runtime_image_from_config() {
   awk '
@@ -98,15 +99,15 @@ echo "Secrets: $SECRETS_PATH"
 echo "Docker: $(docker --version)"
 echo
 echo "Image step before init:"
-echo "  docker load --input /path/to/uipath-robot-image.tar"
 if [ -n "$RUNTIME_IMAGE" ]; then
-  echo "  # or, if registry access is available:"
-  echo "  docker pull $RUNTIME_IMAGE"
+  echo "  init-product.sh will pull when missing: $RUNTIME_IMAGE"
 fi
+echo "  For offline installs, use IMAGE_TAR=/path/to/uipath-robot-image.tar"
+echo "  To disable pull, run init with PULL_IMAGE=0"
 echo
 echo "Next step:"
 echo "  sudo -E bash $SETUP_DIR/init-product.sh"
 
 if [ "$RUN_INIT" = "1" ]; then
-  COUNT="$COUNT" CONFIG_PATH="$CONFIG_PATH" SECRETS_PATH="$SECRETS_PATH" bash "$SETUP_DIR/init-product.sh"
+  COUNT="$COUNT" CONFIG_PATH="$CONFIG_PATH" SECRETS_PATH="$SECRETS_PATH" PULL_IMAGE="$PULL_IMAGE" bash "$SETUP_DIR/init-product.sh"
 fi

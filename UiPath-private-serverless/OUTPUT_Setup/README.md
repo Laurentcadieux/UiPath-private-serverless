@@ -13,7 +13,7 @@ sudo -E bash OUTPUT_Setup/install.sh
 sudo -E bash OUTPUT_Setup/init-product.sh
 ```
 
-`init-product.sh` checks that the configured UiPath Robot image exists locally before it starts containers.
+`init-product.sh` checks that the configured UiPath Robot image exists locally before it starts containers. If the image is missing, it pulls the configured image by default.
 
 ## One-Step Host Bootstrap
 
@@ -36,22 +36,22 @@ curl -fsSL "$REPO_URL/raw/$BRANCH/OUTPUT_Setup/install.sh" | sudo -E bash
 
 ## Image Step
 
-The setup installs Docker and the product CLI, but it does not invent or download a UiPath Robot image silently. Before init, load or pull the configured image:
+The setup installs Docker and the product CLI. `init-product.sh` pulls the configured UiPath Robot image when it is missing:
 
 ```bash
-docker load --input /path/to/uipath-robot-image.tar
+sudo -E bash OUTPUT_Setup/init-product.sh
 ```
 
-or, if registry access is available:
-
-```bash
-docker pull uipathprod.azurecr.io/robot/uiautomation-runtime:latest24.10
-```
-
-You can also pass a local archive directly to init:
+If the VM has no registry access, pass a local image archive instead:
 
 ```bash
 IMAGE_TAR=/path/to/uipath-robot-image.tar sudo -E bash OUTPUT_Setup/init-product.sh
+```
+
+To require a preloaded image and fail instead of pulling:
+
+```bash
+PULL_IMAGE=0 sudo -E bash OUTPUT_Setup/init-product.sh
 ```
 
 ## Environment
@@ -66,3 +66,4 @@ IMAGE_TAR=/path/to/uipath-robot-image.tar sudo -E bash OUTPUT_Setup/init-product
 - `COUNT` - container count for initialization; default: `1`
 - `RUN_INIT=1` - run `init-product.sh` after install
 - `IMAGE_TAR` - optional local UiPath Robot image archive used by `init-product.sh`
+- `PULL_IMAGE` - pull the configured Robot image when missing; default: `1`
