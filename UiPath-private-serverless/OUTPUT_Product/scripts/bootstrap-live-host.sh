@@ -1,84 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SETUP_SCRIPT="$REPO_ROOT/OUTPUT_Setup/install.sh"
+
+if [ -f "$SETUP_SCRIPT" ]; then
+  exec bash "$SETUP_SCRIPT"
+fi
+
 REPO_URL="${REPO_URL:-https://github.com/Laurentcadieux/UiPath-private-serverless.git}"
 BRANCH="${BRANCH:-main}"
-INSTALL_DIR="${INSTALL_DIR:-/opt/UiPath-private-serverless}"
-PRODUCT_SUBDIR="${PRODUCT_SUBDIR:-}"
-CONFIG_PATH="${CONFIG_PATH:-/etc/uipath-runtime/config.yaml}"
-SECRETS_PATH="${SECRETS_PATH:-/etc/uipath-runtime/secrets.env}"
-COUNT="${COUNT:-1}"
-RUN_INIT="${RUN_INIT:-0}"
 
-if [ "$(id -u)" -ne 0 ]; then
-  echo "ERROR: run as root, for example: sudo -E bash scripts/bootstrap-live-host.sh" >&2
-  exit 3
+if command -v curl >/dev/null 2>&1; then
+  curl -fsSL "$REPO_URL/raw/$BRANCH/OUTPUT_Setup/install.sh" | bash
+  exit $?
 fi
 
-export DEBIAN_FRONTEND=noninteractive
-
-apt-get update
-apt-get install -y \
-  ca-certificates \
-  curl \
-  git \
-  gnupg \
-  openssl \
-  python3 \
-  python3-venv
-
-if ! command -v docker >/dev/null 2>&1; then
-  apt-get install -y docker.io docker-compose-v2 || apt-get install -y docker.io
-fi
-
-systemctl enable --now docker
-
-if [ -d "$INSTALL_DIR/.git" ]; then
-  git -C "$INSTALL_DIR" fetch --depth 1 origin "$BRANCH"
-  git -C "$INSTALL_DIR" checkout "$BRANCH"
-  git -C "$INSTALL_DIR" reset --hard "origin/$BRANCH"
-else
-  rm -rf "$INSTALL_DIR"
-  git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
-fi
-
-PRODUCT_DIR="$INSTALL_DIR"
-if [ -n "$PRODUCT_SUBDIR" ]; then
-  PRODUCT_DIR="$INSTALL_DIR/$PRODUCT_SUBDIR"
-elif [ -f "$INSTALL_DIR/OUTPUT_Product/pyproject.toml" ]; then
-  PRODUCT_DIR="$INSTALL_DIR/OUTPUT_Product"
-fi
-
-if [ ! -f "$PRODUCT_DIR/pyproject.toml" ]; then
-  echo "ERROR: product folder not found at $PRODUCT_DIR" >&2
-  echo "Set PRODUCT_SUBDIR if the repository stores the product in a subfolder." >&2
-  exit 2
-fi
-
-"$PRODUCT_DIR/scripts/install.sh"
-
-mkdir -p /etc/uipath-runtime
-if [ ! -f "$CONFIG_PATH" ]; then
-  cp "$PRODUCT_DIR/config/config.example.yaml" "$CONFIG_PATH"
-  chmod 644 "$CONFIG_PATH"
-  echo "Created default config at $CONFIG_PATH. Edit orchestrator.url and runtime.image before init."
-fi
-
-if [ -n "${UIPATH_MACHINE_KEY:-}" ]; then
-  umask 077
-  printf 'UIPATH_MACHINE_KEY=%s\n' "$UIPATH_MACHINE_KEY" > "$SECRETS_PATH"
-  chown root:root "$SECRETS_PATH"
-  chmod 600 "$SECRETS_PATH"
-fi
-
-echo "Installed uipath-runtime from $REPO_URL ($BRANCH)"
-echo "Product folder: $PRODUCT_DIR"
-echo "Config: $CONFIG_PATH"
-echo "Secrets: $SECRETS_PATH"
-echo "Docker: $(docker --version)"
-echo "Next command:"
-echo "  uipath-runtime init --config $CONFIG_PATH --count $COUNT --auto-install-host-deps"
-
-if [ "$RUN_INIT" = "1" ]; then
-  uipath-runtime init --config "$CONFIG_PATH" --count "$COUNT" --auto-install-host-deps
-fi
+echo "ERROR: OUTPUT_Setup/install.sh was not found beside OUTPUT_Product." >&2
+echo "Run the setup script from the repository root instead:" >&2
+echo "  sudo -E bash OUTPUT_Setup/install.sh" >&2
+echo "Or install curl and fetch: $REPO_URL/raw/$BRANCH/OUTPUT_Setup/install.sh" >&2
+exit 2

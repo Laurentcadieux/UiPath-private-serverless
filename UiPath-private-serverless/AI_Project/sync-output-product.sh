@@ -7,19 +7,27 @@ if [ $# -ne 1 ]; then
 fi
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUTPUT_DIR="$PROJECT_ROOT/OUTPUT_Product"
 TARGET_DIR="$1"
 
-if [ ! -f "$OUTPUT_DIR/pyproject.toml" ]; then
+if [ ! -f "$PROJECT_ROOT/OUTPUT_Product/pyproject.toml" ]; then
   echo "ERROR: OUTPUT_Product does not look like a Python product folder." >&2
   exit 2
 fi
 
+if [ ! -f "$PROJECT_ROOT/OUTPUT_Setup/install.sh" ]; then
+  echo "ERROR: OUTPUT_Setup does not contain install.sh." >&2
+  exit 2
+fi
+
 mkdir -p "$TARGET_DIR"
-rsync -a --delete \
+rsync -a --delete --delete-excluded \
   --exclude ".git/" \
   --exclude "__pycache__/" \
   --exclude "*.pyc" \
-  "$OUTPUT_DIR/" "$TARGET_DIR/"
+  --include "/README.md" \
+  --include "/OUTPUT_Product/***" \
+  --include "/OUTPUT_Setup/***" \
+  --exclude "*" \
+  "$PROJECT_ROOT/" "$TARGET_DIR/"
 
-echo "Synced OUTPUT_Product to $TARGET_DIR"
+echo "Synced README.md, OUTPUT_Setup, and OUTPUT_Product to $TARGET_DIR"

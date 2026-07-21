@@ -21,20 +21,20 @@ Production-oriented Python CLI for provisioning a local Ubuntu host as a private
 
 ## Usage
 
+From the repository root, run setup and then initialize the product:
+
+```bash
+sudo -E bash OUTPUT_Setup/install.sh
+sudo -E bash OUTPUT_Setup/init-product.sh
+```
+
 Bootstrap a raw Ubuntu host from the repository:
 
 ```bash
 export REPO_URL="https://github.com/Laurentcadieux/UiPath-private-serverless.git"
 export BRANCH="main"
 export UIPATH_MACHINE_KEY="machine-template-key"
-curl -fsSL "$REPO_URL/raw/$BRANCH/scripts/bootstrap-live-host.sh" | sudo -E bash
-```
-
-If this product is still inside the AI builder repository, use the product subfolder path:
-
-```bash
-export PRODUCT_SUBDIR="OUTPUT_Product"
-curl -fsSL "$REPO_URL/raw/$BRANCH/OUTPUT_Product/scripts/bootstrap-live-host.sh" | sudo -E bash
+curl -fsSL "$REPO_URL/raw/$BRANCH/OUTPUT_Setup/install.sh" | sudo -E bash
 ```
 
 See `docs/live-host-bootstrap.md` for the live-host runbook.

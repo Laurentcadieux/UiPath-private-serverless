@@ -7,31 +7,21 @@ This guide bootstraps an Ubuntu 24.04 amd64 host as a local UiPath Linux Robot c
 Run as root on the target host.
 
 ```bash
-apt-get update
-apt-get install -y ca-certificates curl git gnupg openssl python3 python3-venv docker.io
-systemctl enable --now docker
-```
-
-Clone the repository:
-
-```bash
 rm -rf /opt/uipath-private-serverless-repo
 git clone --depth 1 https://github.com/Laurentcadieux/UiPath-private-serverless.git /opt/uipath-private-serverless-repo
-cd /opt/uipath-private-serverless-repo/OUTPUT_Product
+cd /opt/uipath-private-serverless-repo
 ```
 
-Install the CLI:
+Install host dependencies and the CLI:
 
 ```bash
-bash scripts/install.sh
+UIPATH_MACHINE_KEY="replace-with-machine-template-key" bash OUTPUT_Setup/install.sh
 uipath-runtime --help
 ```
 
 Prepare configuration:
 
 ```bash
-mkdir -p /etc/uipath-runtime
-cp config/config.example.yaml /etc/uipath-runtime/config.yaml
 nano /etc/uipath-runtime/config.yaml
 ```
 
@@ -61,7 +51,7 @@ docker pull uipathprod.azurecr.io/robot/uiautomation-runtime:latest24.10
 Initialize one Robot container:
 
 ```bash
-uipath-runtime init --config /etc/uipath-runtime/config.yaml --count 1 --auto-install-host-deps
+COUNT=1 bash OUTPUT_Setup/init-product.sh
 ```
 
 Check status:

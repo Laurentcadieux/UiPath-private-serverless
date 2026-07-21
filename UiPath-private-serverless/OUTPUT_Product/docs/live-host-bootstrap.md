@@ -17,14 +17,15 @@ Run as root on the Ubuntu host:
 export REPO_URL="https://github.com/Laurentcadieux/UiPath-private-serverless.git"
 export BRANCH="main"
 export UIPATH_MACHINE_KEY="machine-template-key"
-curl -fsSL "$REPO_URL/raw/$BRANCH/scripts/bootstrap-live-host.sh" | bash
+curl -fsSL "$REPO_URL/raw/$BRANCH/OUTPUT_Setup/install.sh" | bash
 ```
 
-If using the AI builder repository before the product has been copied to a standalone public repository:
+To install and immediately initialize:
 
 ```bash
-export PRODUCT_SUBDIR="OUTPUT_Product"
-curl -fsSL "$REPO_URL/raw/$BRANCH/OUTPUT_Product/scripts/bootstrap-live-host.sh" | bash
+export RUN_INIT=1
+export COUNT=1
+curl -fsSL "$REPO_URL/raw/$BRANCH/OUTPUT_Setup/install.sh" | bash
 ```
 
 If the repository is private, clone with a deploy key or run the script from an authenticated checkout instead:
@@ -32,7 +33,7 @@ If the repository is private, clone with a deploy key or run the script from an 
 ```bash
 git clone git@github.com:Laurentcadieux/UiPath-private-serverless.git /opt/UiPath-private-serverless
 cd /opt/UiPath-private-serverless
-PRODUCT_SUBDIR="OUTPUT_Product" UIPATH_MACHINE_KEY="machine-template-key" bash OUTPUT_Product/scripts/bootstrap-live-host.sh
+UIPATH_MACHINE_KEY="machine-template-key" bash OUTPUT_Setup/install.sh
 ```
 
 ## Configure
@@ -77,13 +78,13 @@ docker image inspect uipathprod.azurecr.io/robot/uiautomation-runtime:latest24.1
 For one test container:
 
 ```bash
-uipath-runtime init --config /etc/uipath-runtime/config.yaml --count 1 --auto-install-host-deps
+COUNT=1 bash /opt/UiPath-private-serverless/OUTPUT_Setup/init-product.sh
 ```
 
 For ten containers:
 
 ```bash
-uipath-runtime init --config /etc/uipath-runtime/config.yaml --count 10 --auto-install-host-deps
+COUNT=10 bash /opt/UiPath-private-serverless/OUTPUT_Setup/init-product.sh
 ```
 
 On the current 512 MB host, start with `--count 1`. Larger counts need a bigger host.
