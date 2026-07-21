@@ -98,7 +98,7 @@ class ActiveJobProbeConfig:
     command: tuple[str, ...] = (
         "/bin/sh",
         "-lc",
-        "pgrep -af 'UiPath.Executor|UiRobot|UiPath.Robot.Executor' >/dev/null",
+        "pgrep -af 'UiPath.Executor|UiPath.Robot.Executor' >/dev/null",
     )
 
 

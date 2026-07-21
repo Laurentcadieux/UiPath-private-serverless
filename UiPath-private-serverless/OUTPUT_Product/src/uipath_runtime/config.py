@@ -146,7 +146,7 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH, *, count_override: int | None 
                         [
                             "/bin/sh",
                             "-lc",
-                            "pgrep -af 'UiPath.Executor|UiRobot|UiPath.Robot.Executor' >/dev/null",
+                            "pgrep -af 'UiPath.Executor|UiPath.Robot.Executor' >/dev/null",
                         ],
                     )
                 )

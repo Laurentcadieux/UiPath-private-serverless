@@ -104,7 +104,7 @@ scaling:
     command:
       - "/bin/sh"
       - "-lc"
-      - "pgrep -af 'UiPath.Executor|UiRobot|UiPath.Robot.Executor' >/dev/null"
+      - "pgrep -af 'UiPath.Executor|UiPath.Robot.Executor' >/dev/null"
 ```
 
 `scale-check` executes the configured probe inside every managed Robot container. Probe exit code `0` means active, `1` means idle, and any other result is treated conservatively as unknown and kept running. Idle timestamps are persisted in `state_path`, so a container is only eligible after it has been idle for the configured number of minutes.
