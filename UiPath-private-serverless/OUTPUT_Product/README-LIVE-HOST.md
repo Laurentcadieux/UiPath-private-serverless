@@ -91,7 +91,7 @@ scaling:
     command:
       - "/bin/sh"
       - "-lc"
-      - "pgrep -af 'UiPath.Executor|UiPath.Robot.Executor' >/dev/null"
+      - "pgrep -af '[U]iPath.Executor|[U]iPath.Robot.Executor' >/dev/null"
 ```
 
 Check without stopping anything:
