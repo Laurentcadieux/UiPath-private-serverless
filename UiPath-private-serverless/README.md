@@ -2,14 +2,27 @@
 
 Deploy a private UiPath Linux Robot runtime on an Ubuntu VM using Docker.
 
-The goal is a simple, repeatable path from a fresh VM to a connected UiPath Robot:
+This folder is the actual runtime project output. The repository root also contains OpenClaw/OMX workspace files such as `.omx/`, `memory/`, and `skills/`; those are development and agent-support context. For installing or operating the runtime, stay in this folder.
+
+## Goal
+
+Provide a simple, repeatable path from a fresh Ubuntu VM to a connected UiPath Robot:
 
 ```bash
 git clone https://github.com/Laurentcadieux/UiPath-private-serverless.git
-cd UiPath-private-serverless
+cd UiPath-private-serverless/UiPath-private-serverless
 sudo -E bash OUTPUT_Setup/install.sh
 sudo -E bash OUTPUT_Setup/init-product.sh
 ```
+
+## Output Folders
+
+The product is intentionally split into setup and product layers:
+
+- `OUTPUT_Setup/` gets the operating system ready to host the product. It installs Ubuntu packages, Docker, Python tooling, product files, config defaults, and starts initialization.
+- `OUTPUT_Product/` is the deployable runtime product. It contains the `uipath-runtime` Python CLI, runtime configuration, Docker/container management, health checks, scaling logic, docs, and tests.
+
+In short: `OUTPUT_Setup` prepares the VM; `OUTPUT_Product` runs and manages the UiPath Robot runtime.
 
 ## What This Does
 
@@ -20,7 +33,7 @@ sudo -E bash OUTPUT_Setup/init-product.sh
 - Stores secrets outside YAML in a root-only `/etc/uipath-runtime/secrets.env` file.
 - Provides status, recreate, idle container scale-down, and optional VM autoscaling commands.
 
-## Repository Layout
+## Project Layout
 
 ```text
 UiPath-private-serverless/
@@ -40,16 +53,13 @@ UiPath-private-serverless/
     └── tests/
 ```
 
-- `OUTPUT_Setup/` is the host setup and product initialization layer.
-- `OUTPUT_Product/` is the deployable Python CLI, product config, docs, source, and tests.
-
 ## Fresh VM Quick Start
 
 Use Ubuntu 22.04 or 24.04 on amd64.
 
 ```bash
 git clone https://github.com/Laurentcadieux/UiPath-private-serverless.git
-cd UiPath-private-serverless
+cd UiPath-private-serverless/UiPath-private-serverless
 sudo -E bash OUTPUT_Setup/install.sh
 ```
 
@@ -262,27 +272,11 @@ docker ps --filter "label=com.uipath.runtime.managed=true"
 docker logs --tail 100 uipath-robot-001
 ```
 
-Verify image availability:
-
-```bash
-docker image inspect uipathprod.azurecr.io/robot/uiautomation-runtime:latest24.10 >/dev/null && echo image-ready
-```
-
-## Development And Tests
-
 Run product tests:
 
 ```bash
 cd OUTPUT_Product
 python3 tests/run_unit.py
-```
-
-Install the CLI from source:
-
-```bash
-cd OUTPUT_Product
-bash scripts/install.sh
-uipath-runtime --help
 ```
 
 ## Troubleshooting
